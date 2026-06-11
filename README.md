@@ -1,3 +1,3 @@
 # Project-Huffman
-A file compressor and decompressor code.\n
+A file compressor and decompressor code.
 Hope you enjoy!
