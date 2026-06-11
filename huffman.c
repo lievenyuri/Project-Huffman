@@ -1,6 +1,50 @@
 #include "huffman.h"
 
-// -------------------- Funções de Criar Structs e Printar ----------------------
+// ============================================================================
+// 1. FUNÇÕES AUXILIARES
+// ============================================================================
+
+void limpar_ecra() 
+{
+    // \033[H  -> Move o cursor para o canto superior esquerdo (posição 1,1)
+    // \033[2J -> Limpa o ecrã inteiro
+    printf("\033[H\033[2J");
+    fflush(stdout); // Garante que o comando é enviado imediatamente
+}
+
+// ============================================================================
+// 2. FUNÇÕES DE CRIAR MAPA DE FREQUENCIA
+// ============================================================================
+
+int criar_frequencia_universal(const char* nome_arquivo, ssize_t mapa_frequencia[])
+{
+    FILE* arquivo = fopen(nome_arquivo, "rb");
+    if(arquivo == NULL)
+    {
+        printf("Erro ao abrir o arquivo %s.\n", nome_arquivo);
+        return 0;
+    }
+
+    unsigned char buffer[4096];
+    size_t bytes_lidos;
+    int total_do_arquivo = 0;
+
+    while((bytes_lidos = fread(buffer, 1, sizeof(buffer), arquivo)) > 0)
+    {
+        for(size_t i = 0; i < bytes_lidos; i++)
+        {
+            mapa_frequencia[buffer[i]]++;
+            total_do_arquivo++;
+        }
+    }
+
+    fclose(arquivo);
+    return total_do_arquivo;
+}
+
+// ============================================================================
+// 3. FUNÇÕES DE ÁRVORE E FILA DE PRIORIDADE
+// ============================================================================
 
 no_arvore* create_node_arvore(void* data)
 {
@@ -20,91 +64,6 @@ LISTA* create_list()
 
     return new_lista;
 }
-
-void printar_HuffmanNode(no_arvore* root)
-{
-    if(root == NULL) return;
-
-    printar_HuffmanNode(root->left);
-
-    HuffmanData* info = (HuffmanData*) root->data;
-
-    printf("Byte: %c | Freq: %ld\n", info->byte, info->frequency);
-
-    printar_HuffmanNode(root->right);
-}
-
-void printar_HuffmanData(HuffmanData* data)
-{
-    printf("[%c] = %ld\n", data->byte, data->frequency);
-}
-
-void printar_no_arvore(no_arvore* item)
-{
-    printar_HuffmanData((HuffmanData*) item->data);
-}
-
-void printar_fila_ordenada(LISTA* fila_de_frequencia)
-{
-    NODE* atual = fila_de_frequencia->head;
-    while(atual != NULL)
-    {
-        printar_no_arvore((no_arvore*) atual->item);
-        atual = atual->next;
-    }
-    printf("\n");
-}
-
-// ------------------------------------ Criar Lista de Frequencia ----------------------------------------
-
-void add_end(LISTA* lista, HuffmanData* data)
-{
-    no_arvore* new_node_arvore = create_node_arvore(data);
-    NODE* new_node = (NODE*) malloc(sizeof(NODE));
-    new_node->next = NULL;
-
-    if(lista->tail != NULL && lista->head != NULL) lista->tail->next = new_node;
-    else
-    {
-        lista->head = new_node;
-        lista->tail = new_node;
-    }
-
-    new_node->item = new_node_arvore;
-    lista->tail = new_node;
-}
-
-void criar_frequencia(unsigned char* texto, ssize_t mapa_frequencia[], ssize_t char_lidos) // CRIA O MAPA DE FREQUENCIA DE UM TEXTO, INCLUINDO O \n E O \0
-{
-    for(char_lidos; char_lidos >= 0; char_lidos--)
-    {
-        mapa_frequencia[texto[char_lidos]]++;
-    }
-
-    return;
-}
-
-void inserir_fila_ordenada(LISTA* fila_de_frequencia, ssize_t mapa_frequencia[])
-{
-    for(int i = 0; i < 256; i++)
-    {
-        if(mapa_frequencia[i] > 0)
-        {
-
-            HuffmanData* data_atual = (HuffmanData*) malloc(sizeof(HuffmanData));
-            data_atual->byte = i;
-            data_atual->frequency = mapa_frequencia[i];
-
-            no_arvore* new_no_arvore = create_node_arvore(data_atual);
-
-            inserir_node_ordenado(fila_de_frequencia, new_no_arvore);
-        }
-    }
-
-    return;
-}
-
-// ----------------------------------------- Organizar Árvore --------------------------------------------
 
 void inserir_node_ordenado(LISTA* lista, no_arvore* node_arvore)
 {
@@ -167,6 +126,22 @@ no_arvore* remover_inicio(LISTA* lista)
     return item_arvore;
 }
 
+void inserir_fila_ordenada(LISTA* fila_de_frequencia, ssize_t mapa_frequencia[])
+{
+    for(int i = 0; i < 256; i++)
+    {
+        if(mapa_frequencia[i] > 0)
+        {
+            HuffmanData* data_atual = (HuffmanData*) malloc(sizeof(HuffmanData));
+            data_atual->byte = i;
+            data_atual->frequency = mapa_frequencia[i];
+
+            no_arvore* new_no_arvore = create_node_arvore(data_atual);
+            inserir_node_ordenado(fila_de_frequencia, new_no_arvore);
+        }
+    }
+}
+
 no_arvore* criar_arvore(LISTA* fila_de_frequencia)
 {
     if(fila_de_frequencia->head == NULL) return NULL;
@@ -199,8 +174,6 @@ no_arvore* criar_arvore(LISTA* fila_de_frequencia)
     return raiz_da_arvore;
 }
 
-// ----------------------------------------- Criar Dicionario ----------------------------------------------------
-
 int altura_arvore(no_arvore* raiz)
 {
     int esq, dir;
@@ -215,12 +188,75 @@ int altura_arvore(no_arvore* raiz)
     }
 }
 
+int calcular_tamanho_arvore(no_arvore* raiz) 
+{
+    if (raiz == NULL) return 0;
+    
+    HuffmanData* data = (HuffmanData*) raiz->data;
+    
+    if (raiz->left == NULL && raiz->right == NULL) {
+        if (data->byte == '/' || data->byte == '\\') {
+            return 2;
+        }
+        return 1;
+    }
+    return 1 + calcular_tamanho_arvore(raiz->left) + calcular_tamanho_arvore(raiz->right);
+}
+
+void salvar_arvore(no_arvore* raiz, FILE* arquivo) 
+{
+    if (raiz == NULL) return;
+    
+    HuffmanData* data = (HuffmanData*) raiz->data;
+    
+    if (raiz->left == NULL && raiz->right == NULL) {
+        if (data->byte == '/' || data->byte == '\\') {
+            fputc('\\', arquivo);
+        }
+        fputc(data->byte, arquivo);
+    } else {
+        fputc('/', arquivo);
+        salvar_arvore(raiz->left, arquivo);
+        salvar_arvore(raiz->right, arquivo);
+    }
+}
+
+no_arvore* reconstruir_arvore(FILE* arquivo, int* tamanho_arvore) 
+{
+    if (*tamanho_arvore <= 0) return NULL;
+    
+    int byte = fgetc(arquivo);
+    (*tamanho_arvore)--;
+    
+    HuffmanData* data = (HuffmanData*) malloc(sizeof(HuffmanData));
+    no_arvore* novo = create_node_arvore(data);
+    
+    if (byte == '\\') {
+        data->byte = fgetc(arquivo);
+        (*tamanho_arvore)--;
+        novo->left = NULL;
+        novo->right = NULL;
+    } else if (byte == '/') {
+        data->byte = '/';
+        novo->left = reconstruir_arvore(arquivo, tamanho_arvore);
+        novo->right = reconstruir_arvore(arquivo, tamanho_arvore);
+    } else {
+        data->byte = byte;
+        novo->left = NULL;
+        novo->right = NULL;
+    }
+    
+    return novo;
+}
+
+// ============================================================================
+// 4. FUNÇÕES DE CRIAR DICIONÁRIO
+// ============================================================================
+
 char** aloca_dicionario(int colunas)
 {
     char** dicionario;
-
     dicionario = malloc(sizeof(char*) * 256);
-
     for(int i = 0; i < 256; i++) dicionario[i] = calloc(colunas, sizeof(char));
     
     return dicionario;
@@ -258,11 +294,44 @@ void imprime_dicionario(char** dicionario)
     printf("\n");
 }
 
-// ---------------------------------------------- Codificar ----------------------------------------------------
+// ============================================================================
+// 5. FUNÇÕES DE MANIPULAÇÃO DE BITS E BYTES
+// ============================================================================
 
-char* codificar(char** dicionario, unsigned char* texto, ssize_t bytes_lidos)
+void empacotar_e_escrever(const char* bits_str, FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count) 
 {
-    char* codigo = calloc((bytes_lidos*8) + 1, sizeof(char));
+    for (int i = 0; bits_str[i] != '\0'; i++) 
+    {
+        if (bits_str[i] == '1') {
+            *bit_buffer |= (1 << (7 - *bit_count));
+        }
+        
+        (*bit_count)++;
+
+        if (*bit_count == 8) {
+            fputc(*bit_buffer, arquivo_saida);
+            *bit_buffer = 0;
+            *bit_count = 0;
+        }
+    }
+}
+
+void flush_bits(FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count) 
+{
+    if (*bit_count > 0) {
+        fputc(*bit_buffer, arquivo_saida);
+        *bit_buffer = 0;
+        *bit_count = 0;
+    }
+}
+
+// ============================================================================
+// 6. FUNÇÕES DE CODIFICAR E DECODIFICAR
+// ============================================================================
+
+char* codificar(char** dicionario, unsigned char* texto, ssize_t bytes_lidos, int colunas)
+{
+    char* codigo = calloc((bytes_lidos * colunas) + 1, sizeof(char));
 
     for(ssize_t i = 0; i < bytes_lidos; i++)
     {
@@ -272,241 +341,101 @@ char* codificar(char** dicionario, unsigned char* texto, ssize_t bytes_lidos)
     return codigo;
 }
 
-// Função que recebe a string de 0 e 1 e vai guardando bit a bit em um byte real
-void empacotar_e_escrever(const char* bits_str, FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count) 
+void decodificar()
 {
-    for (int i = 0; bits_str[i] != '\0'; i++) 
-    {
-        if (bits_str[i] == '1') {
-            // Desloca o bit 1 para a posição correta da esquerda para a direita
-            *bit_buffer |= (1 << (7 - *bit_count));
-        }
-        // Se for '0', não precisamos fazer nada porque o buffer já começa zerado
-        
-        (*bit_count)++;
+    char nome_comprimido[256];
+    printf("Digite o nome do arquivo comprimido para descompactar (Ex: bin_comprimido.txt):\n");
+    if (scanf("%255s", nome_comprimido) != 1) return;
 
-        // Quando completamos 8 bits, despejamos o byte real no arquivo e resetamos
-        if (*bit_count == 8) {
-            fputc(*bit_buffer, arquivo_saida);
-            *bit_buffer = 0;
-            *bit_count = 0;
-        }
-    }
-}
-
-// Função essencial para descarregar o último byte se ele não ficou totalmente cheio
-void flush_bits(FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count) 
-{
-    if (*bit_count > 0) {
-        // Grava o byte incompleto (o resto dele estará preenchido com zeros)
-        fputc(*bit_buffer, arquivo_saida);
-        *bit_buffer = 0;
-        *bit_count = 0;
-    }
-}
-
-// ----------------------------------------- Leitura Universal de Arquivos -------------------------------------------
-
-void ler_arquivo(unsigned char* nome_arquivo)
-{
-    FILE* arquivo = fopen(nome_arquivo, "rb");
-    unsigned char buffer[4096];
-
-    size_t bytes_lidos = fread(buffer, 1, sizeof(buffer), arquivo);
-}
-
-int criar_frequencia_universal(const char* nome_arquivo, ssize_t mapa_frequencia[])
-{
-    FILE* arquivo = fopen(nome_arquivo, "rb");
-    if(arquivo == NULL)
-    {
-        printf("Erro ao abrir o arquivo %s.\n", nome_arquivo);
-        return 0;
-    }
-
-    unsigned char buffer[4096];
-    size_t bytes_lidos;
-    int total_do_arquivo = 0;
-
-    while((bytes_lidos = fread(buffer, 1, sizeof(buffer), arquivo)) > 0)
-    {
-        for(size_t i = 0; i < bytes_lidos; i++)
-        {
-            mapa_frequencia[buffer[i]]++;
-            total_do_arquivo++;
-        }
-    }
-
-    return total_do_arquivo;
-}
-
-// ----------------------------- Gerador de Testes de Codificação ------------------------------
-
-void gerar_teste_nulo() 
-{
-    FILE* f = fopen("teste_nulo.bin", "wb");
-    unsigned char dados[] = {'A', 'B', 'C', 0, 'X', 'Y', 'Z'};
-    fwrite(dados, 1, 7, f);
-    fclose(f);
-}
-
-void gerar_teste_alfabeto() 
-{
-    FILE* f = fopen("teste_alfabeto.bin", "wb");
-    for (int i = 0; i < 256; i++) {
-        fputc(i, f); // Grava o byte de valor i
-    }
-    fclose(f);
-}
-
-void gerar_teste_grande()
-{
-    FILE* f = fopen("teste_grande.bin", "wb");
-    for (int i = 0; i < 10000; i++) {
-        fputc('A', f);
-    }
-    fclose(f);
-}
-
-void gerar_teste_bmp()
-{
-    FILE* f = fopen("imagem_teste.bmp", "wb");
-    if (f == NULL) {
-        printf("Erro ao criar o arquivo BMP de teste.\n");
+    FILE* arquivo_comprimido = fopen(nome_comprimido, "rb");
+    if(arquivo_comprimido == NULL) {
+        printf("Erro ao abrir o arquivo %s.\n", nome_comprimido);
         return;
     }
 
-    // Cabeçalho do Arquivo BMP (File Header - 14 bytes)
-    unsigned char fileHeader[14] = {
-        'B', 'M',               // Assinatura que define um arquivo BMP
-        0x36, 0x75, 0x00, 0x00, // Tamanho total do arquivo (30.054 bytes -> 0x7536)
-        0, 0, 0, 0,             // Reservado
-        0x36, 0, 0, 0           // Onde começam os pixels (offset de 54 bytes)
-    };
+    unsigned char byte1 = fgetc(arquivo_comprimido);
+    unsigned char byte2 = fgetc(arquivo_comprimido);
+    
+    int lixo = byte1 >> 5;
+    int tamanho_arvore = ((byte1 & 0x1F) << 8) | byte2;
 
-    // Cabeçalho de Informação da Imagem (DIB Header - 40 bytes)
-    unsigned char dibHeader[40] = {
-        40, 0, 0, 0,            // Tamanho deste cabeçalho (40 bytes)
-        100, 0, 0, 0,           // Largura da imagem (100 pixels)
-        100, 0, 0, 0,           // Altura da imagem (100 pixels)
-        1, 0,                   // Quantidade de planos (Sempre 1)
-        24, 0,                  // Bits por Pixel (24-bit: 3 bytes por pixel - RGB)
-        0, 0, 0, 0,             // Compressão (0 = Nenhuma)
-        0, 0, 0, 0,             // Tamanho dos dados brutos (Pode ser 0 se não houver compressão)
-        0, 0, 0, 0,             // Resolução horizontal
-        0, 0, 0, 0,             // Resolução vertical
-        0, 0, 0, 0,             // Número de cores na palete
-        0, 0, 0, 0              // Cores importantes
-    };
+    printf("Lixo: %d bits | Tamanho da Arvore: %d bytes\n", lixo, tamanho_arvore);
 
-    // Escreve os 54 bytes de cabeçalhos obrigatórios
-    fwrite(fileHeader, 1, 14, f);
-    fwrite(dibHeader, 1, 40, f);
+    no_arvore* raiz = reconstruir_arvore(arquivo_comprimido, &tamanho_arvore);
 
-    // Escreve os dados dos pixels (100x100 = 10.000 pixels)
-    // O formato BMP armazena os pixels de baixo para cima e na ordem BGR (Blue, Green, Red)
-    for (int y = 0; y < 100; y++) {
-        for (int x = 0; x < 100; x++) {
-            unsigned char r = (x * 255) / 100; // Gradiente horizontal de vermelho
-            unsigned char g = (y * 255) / 100; // Gradiente vertical de verde
-            unsigned char b = 150;             // Azul fixo para dar um tom lilás/ciano
+    char nome_restaurado[256];
+    size_t len = strlen(nome_comprimido);
 
-            fputc(b, f); // Escreve Azul
-            fputc(g, f); // Escreve Verde
-            fputc(r, f); // Escreve Vermelho
-        }
-    }
-
-    fclose(f);
-    printf("Imagem de teste 'imagem_teste.bmp' gerada com sucesso (30.054 bytes)!\n");
-}
-
-void limpar_ecra() 
-{
-    // \033[H  -> Move o cursor para o canto superior esquerdo (posição 1,1)
-    // \033[2J -> Limpa o ecrã inteiro
-    printf("\033[H\033[2J");
-    fflush(stdout); // Garante que o comando é enviado imediatamente
-}
-
-// ----------------------------------------- Decodificar -----------------------------------------
-
-void decodificar(no_arvore* raiz)
-{
-    if(raiz == NULL)
+    if (len > 5 && strcmp(&nome_comprimido[len - 5], ".huff") == 0) 
     {
-        printf("\n[Erro] Nenhuma árvore de Huffman encontrada na memória.\n");
-        printf("Por favor, compacte um arquivo primeiro para gerar a árvore!\n");
-        return;
-    }
-
-    FILE* arquivo_comprimido = fopen("texto_comprimido.txt", "rb");
-
-    if(arquivo_comprimido == NULL)
+        strncpy(nome_restaurado, nome_comprimido, len - 5);
+        nome_restaurado[len - 5] = '\0';
+    } 
+    else 
     {
-        printf("Erro ao abrir o arquivo texto_comprimido.txt .\n");
-        return;
-    }
-
-    char nome_original[256];
-    size_t tamanho_original = 0;
-    if(fscanf(arquivo_comprimido, "%255s %ld\n", nome_original, &tamanho_original) != 2)
-    {
-        printf("Erro ao ler o cabeçalho do arquivo comprimido.\n");
-        fclose(arquivo_comprimido);
-        return;
+        strncpy(nome_restaurado, nome_comprimido, sizeof(nome_restaurado) - 1);
+        nome_restaurado[sizeof(nome_restaurado) - 1] = '\0';
     }
 
     char nome_saida[300];
-    sprintf(nome_saida, "descompactado_%s", nome_original);
+    snprintf(nome_saida, sizeof(nome_saida), "descompactado_%s", nome_restaurado);
+
     FILE* arquivo_descomprimido = fopen(nome_saida, "wb");
 
-    if(arquivo_descomprimido == NULL)
-    {
-        printf("Erro ao criar o arquivo de saida descompactado.\n");
+    if(arquivo_descomprimido == NULL) {
+        printf("Erro ao criar o arquivo de saida: %s.\n", nome_saida);
         fclose(arquivo_comprimido);
         return;
     }
 
     no_arvore* atual = raiz;
-    unsigned char buffer_leitura[4096];
-    size_t bytes_lidos;
-    long bytes_restaurados = 0;
-
-    while(bytes_restaurados < tamanho_original && (bytes_lidos = fread(buffer_leitura, 1, sizeof(buffer_leitura), arquivo_comprimido)) > 0)
-    {
-        for(size_t i = 0; i < bytes_lidos; i++)
-        {
-            unsigned char byte_atual = buffer_leitura[i];
-
-            for(int bit_pos = 0; bit_pos < 8; bit_pos++)
-            {
+    int c = fgetc(arquivo_comprimido);
+    if (c == EOF) {
+        fclose(arquivo_comprimido);
+        fclose(arquivo_descomprimido);
+        return;
+    }
+    
+    unsigned char byte_atual = (unsigned char)c;
+    
+    while(1) {
+        c = fgetc(arquivo_comprimido);
+        
+        if (c == EOF) {
+            int bits_limite = 8 - lixo;
+            for(int bit_pos = 0; bit_pos < bits_limite; bit_pos++) {
                 int bit = (byte_atual >> (7 - bit_pos)) & 1;
+                
+                if(bit == 0) atual = atual->left;
+                else atual = atual->right;
 
+                if(atual->left == NULL && atual->right == NULL) {
+                    HuffmanData* data = (HuffmanData*) atual->data;
+                    fputc(data->byte, arquivo_descomprimido);
+                    atual = raiz;
+                }
+            }
+            break;
+        } else {
+            unsigned char proximo_byte = (unsigned char)c;
+            for(int bit_pos = 0; bit_pos < 8; bit_pos++) {
+                int bit = (byte_atual >> (7 - bit_pos)) & 1;
+                
                 if(bit == 0) atual = atual->left;
                 else if(bit == 1) atual = atual->right;
 
-                if(atual->left == NULL && atual->right == NULL)
-                {
+                if(atual->left == NULL && atual->right == NULL) {
                     HuffmanData* data = (HuffmanData*) atual->data;
-
                     fputc(data->byte, arquivo_descomprimido);
-                    bytes_restaurados++;
-                    
                     atual = raiz;
-
-                    if(bytes_restaurados == tamanho_original)
-                    {
-                        break;
-                    }
                 }
             }
-            if(bytes_restaurados == tamanho_original) break;
+            byte_atual = proximo_byte;
         }
     }
 
     fclose(arquivo_comprimido);
     fclose(arquivo_descomprimido);
 
-    printf("Arquivo decodificado e restaurado com sucesso em '%s' !\n", nome_saida);
+    printf("Arquivo decodificado e restaurado com sucesso em '%s'!\n", nome_saida);
 }

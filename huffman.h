@@ -48,7 +48,7 @@ char** aloca_dicionario(int colunas);
 void gerar_dicionario(char** dicionario, no_arvore* raiz, unsigned char* string, int colunas);
 void imprime_dicionario(char** dicionario);
 
-char* codificar(char** dicionario, unsigned char* texto, ssize_t char_lidos);
+char* codificar(char** dicionario, unsigned char* texto, ssize_t char_lidos, int colunas);
 void empacotar_e_escrever(const char* bits_str, FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count);
 void flush_bits(FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count);
 
@@ -59,6 +59,9 @@ void gerar_teste_grande();
 void gerar_teste_bmp();
 void limpar_ecra();
 
-void decodificar(no_arvore* raiz);
+int calcular_tamanho_arvore(no_arvore* raiz);
+void salvar_arvore(no_arvore* raiz, FILE* arquivo);
+no_arvore* reconstruir_arvore(FILE* arquivo, int* tamanho_arvore);
+void decodificar();
 
 #endif

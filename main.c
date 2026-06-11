@@ -9,6 +9,9 @@ no_arvore* huffman()
 
     printf("Digite o nome do arquivo para compactar (Exemplo: gatos.jpg , chave.txt, notas.pdf):\n");
     char_lidos = getline((char**) &nome_arquivo, &tamanho_buffer, stdin);
+    nome_arquivo[char_lidos-1] = '\0';
+    char nome_saida[512];
+    snprintf(nome_saida, sizeof(nome_saida), "%s.huff", nome_arquivo);
 
     if(char_lidos > 0 && nome_arquivo[char_lidos - 1] == '\n') nome_arquivo[char_lidos-1] = '\0';
 
@@ -32,7 +35,7 @@ no_arvore* huffman()
     imprime_dicionario(dicionario);
 
     FILE* arquivo_entrada = fopen((char*) nome_arquivo, "rb");
-    FILE* arquivo_saida = fopen("bin_comprimido.txt", "wb");
+    FILE* arquivo_saida = fopen(nome_saida, "wb");
 
     if(arquivo_entrada == NULL || arquivo_saida == NULL)
     {
@@ -41,11 +44,10 @@ no_arvore* huffman()
         return NULL;
     }
 
-    fseek(arquivo_entrada, 0, SEEK_END);
-    ssize_t tamanho_original_arquivo = ftell(arquivo_entrada);
-    fseek(arquivo_entrada, 0, SEEK_SET);
+    fputc(0, arquivo_saida);
+    fputc(0, arquivo_saida);
 
-    fprintf(arquivo_saida, "%s %ld\n", nome_arquivo, tamanho_original_arquivo);
+    salvar_arvore(raiz_huffman, arquivo_saida);
 
     unsigned char bit_buffer = 0;
     int bit_count = 0;
@@ -55,13 +57,24 @@ no_arvore* huffman()
 
     while((bytes_lidos = fread(buffer_leitura, 1, sizeof(buffer_leitura), arquivo_entrada)) > 0)
     {
-        char* codificado = codificar(dicionario, buffer_leitura, bytes_lidos);
+        char* codificado = codificar(dicionario, buffer_leitura, bytes_lidos, colunas);
 
         empacotar_e_escrever(codificado, arquivo_saida, &bit_buffer, &bit_count);
         free(codificado);
     }
 
+    int lixo = (bit_count == 0) ? 0 : (8 - bit_count);
+    int tamanho_arvore = calcular_tamanho_arvore(raiz_huffman);
+
     flush_bits(arquivo_saida, &bit_buffer, &bit_count);
+
+    fseek(arquivo_saida, 0 , SEEK_SET);
+
+    unsigned char byte1 = (lixo << 5) | (tamanho_arvore >> 8);
+    unsigned char byte2 = tamanho_arvore & 0xFF;
+
+    fputc(byte1, arquivo_saida);
+    fputc(byte2, arquivo_saida);
 
     fclose(arquivo_entrada);
     fclose(arquivo_saida);
@@ -70,7 +83,7 @@ no_arvore* huffman()
 
     limpar_ecra();
 
-    printf("Arquivo Binário compactado com sucesso.\n");
+    printf("Arquivo Binário compactado com sucesso em '%s'!.\n", nome_saida);
 
     return raiz_huffman;
 }
@@ -101,13 +114,14 @@ int main()
         {
             case 1:
                 limpar_ecra();
-                raiz_compartilhada = huffman();
+                huffman();
                 break;
             case 2:
                 limpar_ecra();
-                decodificar(raiz_compartilhada);
+                decodificar();
                 break;
             case 0:
+                limpar_ecra();
                 printf("\n\tSaindo da Central de Projetos. Até mais!\n");
                 return 0;
                 break;
