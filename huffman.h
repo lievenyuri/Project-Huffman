@@ -6,6 +6,10 @@
 #include <string.h>
 #include <sys/types.h>
 
+// ============================================================================
+// ESTRUTURAS DE DADOS
+// ============================================================================
+
 typedef struct HuffmanData {
     unsigned char byte; // Usamos unsigned char para aceitar QUALQUER tipo de arquivo (0 a 255)
     ssize_t frequency;     // Quantas vezes o byte aparece
@@ -27,41 +31,41 @@ typedef struct lista{ // Apenas contém o head e o tail da lista, que são nodes
     NODE* tail;
 } LISTA;
 
+// ============================================================================
+// PROTÓTIPOS DAS FUNÇÕES (Organizados conforme huffman.c)
+// ============================================================================
+
+// 1. INICIALIZAÇÃO DE ESTRUTURAS
 no_arvore* create_node_arvore(void* data);
 LISTA* create_list();
 
-void printar_HuffmanNode(no_arvore* root);
-void printar_HuffmanData(HuffmanData* data);
-void printar_no_arvore(no_arvore* item);
-void printar_fila_ordenada(LISTA* fila_de_frequencia);
-
-void add_end(LISTA* lista, HuffmanData* data);
-void criar_frequencia(unsigned char* texto, ssize_t mapa_frequencia[], ssize_t char_lidos);
+// 2. CONSTRUÇÃO DA FILA DE FREQUÊNCIA
+int criar_frequencia_universal(const char* nome_arquivo, ssize_t mapa_frequencia[]);
 void inserir_fila_ordenada(LISTA* fila_de_frequencia, ssize_t mapa_frequencia[]);
-
 void inserir_node_ordenado(LISTA* lista, no_arvore* node_arvore);
+
+// 3. CONSTRUÇÃO DA ÁRVORE DE HUFFMAN
 no_arvore* remover_inicio(LISTA* lista);
 no_arvore* criar_arvore(LISTA* fila_de_frequencia);
-
 int altura_arvore(no_arvore* raiz);
+
+// 4. DICIONÁRIO DE CODIFICAÇÃO
 char** aloca_dicionario(int colunas);
 void gerar_dicionario(char** dicionario, no_arvore* raiz, unsigned char* string, int colunas);
 void imprime_dicionario(char** dicionario);
 
+// 5. CODIFICAÇÃO E COMPACTAÇÃO
 char* codificar(char** dicionario, unsigned char* texto, ssize_t char_lidos, int colunas);
 void empacotar_e_escrever(const char* bits_str, FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count);
 void flush_bits(FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count);
-
-int criar_frequencia_universal(const char* nome_arquivo, ssize_t mapa_frequencia[]);
-void gerar_teste_nulo();
-void gerar_teste_alfabeto();
-void gerar_teste_grande();
-void gerar_teste_bmp();
-void limpar_ecra();
-
 int calcular_tamanho_arvore(no_arvore* raiz);
 void salvar_arvore(no_arvore* raiz, FILE* arquivo);
+
+// 6. DECODIFICAÇÃO E DESCOMPACTAÇÃO
 no_arvore* reconstruir_arvore(FILE* arquivo, int* tamanho_arvore);
 void decodificar();
+
+// 7. UTILITÁRIOS DE SISTEMA
+void limpar_ecra();
 
 #endif

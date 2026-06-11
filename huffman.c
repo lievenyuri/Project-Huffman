@@ -195,7 +195,7 @@ int calcular_tamanho_arvore(no_arvore* raiz)
     HuffmanData* data = (HuffmanData*) raiz->data;
     
     if (raiz->left == NULL && raiz->right == NULL) {
-        if (data->byte == '/' || data->byte == '\\') {
+        if (data->byte == '*' || data->byte == '\\') {
             return 2;
         }
         return 1;
@@ -210,12 +210,12 @@ void salvar_arvore(no_arvore* raiz, FILE* arquivo)
     HuffmanData* data = (HuffmanData*) raiz->data;
     
     if (raiz->left == NULL && raiz->right == NULL) {
-        if (data->byte == '/' || data->byte == '\\') {
+        if (data->byte == '*' || data->byte == '\\') {
             fputc('\\', arquivo);
         }
         fputc(data->byte, arquivo);
     } else {
-        fputc('/', arquivo);
+        fputc('*', arquivo);
         salvar_arvore(raiz->left, arquivo);
         salvar_arvore(raiz->right, arquivo);
     }
@@ -236,8 +236,8 @@ no_arvore* reconstruir_arvore(FILE* arquivo, int* tamanho_arvore)
         (*tamanho_arvore)--;
         novo->left = NULL;
         novo->right = NULL;
-    } else if (byte == '/') {
-        data->byte = '/';
+    } else if (byte == '*') {
+        data->byte = '*';
         novo->left = reconstruir_arvore(arquivo, tamanho_arvore);
         novo->right = reconstruir_arvore(arquivo, tamanho_arvore);
     } else {
