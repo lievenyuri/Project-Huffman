@@ -29,12 +29,12 @@ int criar_frequencia_universal(const char* nome_arquivo, ssize_t mapa_frequencia
     size_t bytes_lidos;
     int total_do_arquivo = 0;
 
-    while((bytes_lidos = fread(buffer, 1, sizeof(buffer), arquivo)) > 0)
+    while((bytes_lidos = fread(buffer, 1, sizeof(buffer), arquivo)) > 0) // LITERALMENTE SO PARA CONSEGUIR LER BLOCOS DE 4096 BYTES COM MAIS EFICIENCIA
     {
         for(size_t i = 0; i < bytes_lidos; i++)
         {
-            mapa_frequencia[buffer[i]]++;
-            total_do_arquivo++;
+            mapa_frequencia[buffer[i]]++;                                // BUFFER[i] É O CARACTERE LIDO NO FREAD, QUE REPRESENTA 1 BYTE, POIS TODO CHARACTERE É REPRESENTADO POR 8 BITS (1 BYTE)
+            total_do_arquivo++;                                          // RETORNA O TOTAL DE CARACTERES LIDOS, OU SEJA, BYTES LIDOS NO TOTAL, SOMANDO TODOS OS BLOCOS DE 4096 BYTES/CARACTERES
         }
     }
 
@@ -155,7 +155,7 @@ no_arvore* criar_arvore(LISTA* fila_de_frequencia)
         HuffmanData* dados_direito = (HuffmanData*) direito->data;
 
         HuffmanData* dados_pai = (HuffmanData*) malloc(sizeof(HuffmanData));
-        dados_pai->byte = '/';
+        dados_pai->byte = '\\';
         dados_pai->frequency = dados_esquerdo->frequency + dados_direito->frequency;
 
         no_arvore* no_pai = create_node_arvore(dados_pai);
