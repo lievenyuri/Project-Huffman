@@ -108,7 +108,7 @@ int criar_frequencia_universal(const char* nome_arquivo, ssize_t mapa_frequencia
     {
         for(size_t i = 0; i < bytes_lidos; i++)
         {
-            mapa_frequencia[buffer[i]]++;                                // BUFFER[i] É O CARACTERE LIDO NO FREAD, QUE REPRESENTA 1 BYTE, POIS TODO CHARACTERE É REPRESENTADO POR 8 BITS (1 BYTE)
+            mapa_frequencia[buffer[i]]++;                                // BUFFER[i] É O CARACTERE LIDO NO FREAD, QUE REPRESENTA 1 BYTE, POIS TODO CARACTERE É REPRESENTADO POR 8 BITS (1 BYTE)
             total_do_arquivo++;                                          // RETORNA O TOTAL DE CARACTERES LIDOS, OU SEJA, BYTES LIDOS NO TOTAL, SOMANDO TODOS OS BLOCOS DE 4096 BYTES/CARACTERES
         }
     }
@@ -121,7 +121,7 @@ int criar_frequencia_universal(const char* nome_arquivo, ssize_t mapa_frequencia
 // 3. FUNÇÕES DE ÁRVORE E FILA DE PRIORIDADE
 // ============================================================================
 
-no_arvore* create_node_arvore(void* data)
+no_arvore* create_node_arvore(void* data) // CRIA UMA FOLHA DA ARVORE, COM OS FILHOS SENDO NULL E RECEBENDO O DADO PARA O PAI
 {
     no_arvore* new_node = (no_arvore*) malloc(sizeof(no_arvore));
     new_node->left = NULL;
@@ -140,7 +140,7 @@ LISTA* create_list()
     return new_lista;
 }
 
-void inserir_node_ordenado(LISTA* lista, no_arvore* node_arvore)
+void inserir_node_ordenado(LISTA* lista, no_arvore* node_arvore) // PEGA O DADO->FREQUENCY DO NODE DE ARVORE E VAI COMPARANDO COM AS FREQUENCIAS DOS NODES QUE ESTÃO NA LISTA, ATÉ ACHAR A POSIÇÃO ORDENADA CORRETAMENTE
 {
     NODE* novo_node = (NODE*) malloc(sizeof(NODE));
     novo_node->item = node_arvore;
@@ -184,7 +184,7 @@ void inserir_node_ordenado(LISTA* lista, no_arvore* node_arvore)
     }
 }
 
-no_arvore* remover_inicio(LISTA* lista)
+no_arvore* remover_inicio(LISTA* lista) // NECESSARIO PARA CRIAR A ARVORE, RETIRA O 1º NODE ATUAL DA LISTA, RETORNANDO O NODE ARVORE QUE FOI RETIRADO
 {
     if(lista->head == NULL) return NULL;
 
@@ -201,7 +201,7 @@ no_arvore* remover_inicio(LISTA* lista)
     return item_arvore;
 }
 
-void inserir_fila_ordenada(LISTA* fila_de_frequencia, ssize_t mapa_frequencia[])
+void inserir_fila_ordenada(LISTA* fila_de_frequencia, ssize_t mapa_frequencia[]) // CRIA 1 NÓ DE ARVORE PARA CADA CARACTERE DO ARQUIVO, E INSERE ORDENADAMENTE DE ACORDO COM A FREQUENCIA
 {
     for(int i = 0; i < 256; i++)
     {
@@ -217,7 +217,7 @@ void inserir_fila_ordenada(LISTA* fila_de_frequencia, ssize_t mapa_frequencia[])
     }
 }
 
-no_arvore* criar_arvore(LISTA* fila_de_frequencia)
+no_arvore* criar_arvore(LISTA* fila_de_frequencia) // RETIRA OS 2 PRIMEIROS ELEMENTOS DA LISTA DE FREQUENCIA, CRIA 1 NODE PAI, E REINSERE NOVAMENTE NA LISTA DE FORMA ORDENADA, DE ACORDO COM A FREQUENCIA
 {
     if(fila_de_frequencia->head == NULL) return NULL;
 
@@ -249,7 +249,7 @@ no_arvore* criar_arvore(LISTA* fila_de_frequencia)
     return raiz_da_arvore;
 }
 
-int altura_arvore(no_arvore* raiz)
+int altura_arvore(no_arvore* raiz) // CALCULA A ALTURA DA ARVORE, PRIMEIRO FAZ COM TODOS OS NODES DA ESQUERDA, PARA DEPOIS FAZER COM OS NODES DA DIREITA, E O VALOR VAI ACUMULANDO AO COMPARAR ESQ E DIR E RETORNAR O MAIOR
 {
     int esq, dir;
     if(raiz == NULL) return -1;
@@ -263,7 +263,7 @@ int altura_arvore(no_arvore* raiz)
     }
 }
 
-int calcular_tamanho_arvore(no_arvore* raiz) 
+int calcular_tamanho_arvore(no_arvore* raiz) // CALCULA QUANTOS CARACTERES FORAM ADICIONADOS NA ARVORE, CONTANDO COM AS FOLHAS QUE NÃO SÃO CARACTERES DE FATO DA ARVORE, MAS OCUPAM ESPAÇO
 {
     if (raiz == NULL) return 0;
     
@@ -278,7 +278,7 @@ int calcular_tamanho_arvore(no_arvore* raiz)
     return 1 + calcular_tamanho_arvore(raiz->left) + calcular_tamanho_arvore(raiz->right);
 }
 
-void salvar_arvore(no_arvore* raiz, FILE* arquivo) 
+void salvar_arvore(no_arvore* raiz, FILE* arquivo) // FAZ A 2ª PARTE DO CABEÇALHO DO ARQUIVO .huff, SALVANDO A ARVORE EM PRÉ-ORDEM, exemplo: "*AB", UTILIZANDO UMA QUANTIDADE VARIÁVEL DE BYTES DE ACORDO COM O ARQUIVO USADO
 {
     if (raiz == NULL) return;
     
@@ -296,7 +296,7 @@ void salvar_arvore(no_arvore* raiz, FILE* arquivo)
     }
 }
 
-no_arvore* reconstruir_arvore(FILE* arquivo, int* tamanho_arvore) 
+no_arvore* reconstruir_arvore(FILE* arquivo, int* tamanho_arvore) // LÊ O ARQUIVO BYTE POR BYTE, E RECRIA A ARVORE DO ARQUIVO COMPRIMIDO ENQUANTO O TAMANHO DA ARVORE FOR MAIOR QUE OU IGUAL A ZERO
 {
     if (*tamanho_arvore <= 0) return NULL;
     
@@ -328,7 +328,7 @@ no_arvore* reconstruir_arvore(FILE* arquivo, int* tamanho_arvore)
 // 4. FUNÇÕES DE CRIAR DICIONÁRIO
 // ============================================================================
 
-char** aloca_dicionario(int colunas)
+char** aloca_dicionario(int colunas) // CRIA UM ESPAÇO NA MEMÓRIA PARA ARMAZENAR QUAIS SERÃO AS SEQUENCIAS DE BITS QUE REPRESENTARÃO CADA CARACTERE DO ARQUIVO LIDO, AO SABER O NUMERO DE COLUNAS/ALTURA DA ARVORE
 {
     char** dicionario;
     dicionario = malloc(sizeof(char*) * 256);
@@ -337,7 +337,7 @@ char** aloca_dicionario(int colunas)
     return dicionario;
 }
 
-void gerar_dicionario(char** dicionario, no_arvore* raiz, const char* string, int colunas)
+void gerar_dicionario(char** dicionario, no_arvore* raiz, const char* string, int colunas) // CRIA A SEQUENCIA DE BITS EM FORMATO DE STRING, QUE SERÁ SALVA PARA CADA CARACTERE DO ARQUIVO LIDO, E COLOCA NO DICIONARIO
 {
     char esquerda[colunas], direita[colunas];
 
@@ -359,7 +359,7 @@ void gerar_dicionario(char** dicionario, no_arvore* raiz, const char* string, in
     }
 }
 
-void imprime_dicionario(char** dicionario)
+void imprime_dicionario(char** dicionario) // INTUITIVO, APENAS IMPRIME BONITINHO O DICIONARIO ENQUANTO EXISTIR CARACTERES QUE REALMENTE FIZERAM PARTE DA ARVORE
 {
     printf("\tDicionario:\n");
     for(int i = 0; i < 256; i++)
@@ -373,7 +373,7 @@ void imprime_dicionario(char** dicionario)
 // 5. FUNÇÕES DE MANIPULAÇÃO DE BITS E BYTES
 // ============================================================================
 
-void empacotar_e_escrever(const char* bits_str, FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count) 
+void empacotar_e_escrever(const char* bits_str, FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count) // CRIAÇÃO DO BYTE COMPRIMIDO (USANDO MASCARA), QUE SERÁ ENVIADO PARA O ARQUIVO .huff APÓS SALVAR O CABEÇALHO E A ARVORE
 {
     for (int i = 0; bits_str[i] != '\0'; i++) 
     {
@@ -391,7 +391,7 @@ void empacotar_e_escrever(const char* bits_str, FILE* arquivo_saida, unsigned ch
     }
 }
 
-void flush_bits(FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count) 
+void flush_bits(FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count) // SE HOUVER SOBRA DE BITS APÓS O FIM DE EMPACOTAR/ESCREVER, SIGNIFICA QUE TEMOS QUE COLOCAR O QUE RESTOU DO BUFFER NO ARQUIVO DE SAIDA
 {
     if (*bit_count > 0) {
         fputc(*bit_buffer, arquivo_saida);
@@ -404,7 +404,7 @@ void flush_bits(FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count)
 // 6. FUNÇÃO DE CODIFICAR O DICIONÁRIO
 // ============================================================================
 
-char* codificar(char** dicionario, unsigned char* texto, ssize_t bytes_lidos, int colunas)
+char* codificar(char** dicionario, unsigned char* texto, ssize_t bytes_lidos, int colunas) // LÊ O DICIONARIO E COLOCA A STRING DE BITS CORRESPONDENTE A CADA CARACTERE DENTRO DA STRING CODIGO, QUE SÃO BLOCOS DE 4096KB
 {
     char* codigo = calloc((bytes_lidos * colunas) + 1, sizeof(char));
 
@@ -435,8 +435,8 @@ void descompactar()
     unsigned char byte1 = fgetc(arquivo_comprimido);
     unsigned char byte2 = fgetc(arquivo_comprimido);
     
-    int lixo = byte1 >> 5;
-    int tamanho_arvore = ((byte1 & 0x1F) << 8) | byte2;
+    int lixo = byte1 >> 5; // O PRIMEIRO BYTE GUARDA TANTO O LIXO QUANTO OS 5 PRIMEIROS BITS DO TAMANHO, AQUI SEPARAMOS O QUE É O LIXO (3 PRIMEIROS BITS)
+    int tamanho_arvore = ((byte1 & 0x1F) << 8) | byte2; // AQUI SEPARAMOS O TAMANHO DA ARVORE (5 BITS RESTANTES DO 1º BYTE + 8 BITS DO 2º BYTE), QUE DÁ UM NUMERO DE 13BITS, NO MÁXIMO
 
     printf("Lixo: %d bits | Tamanho da Arvore: %d bytes\n", lixo, tamanho_arvore);
 
@@ -467,22 +467,22 @@ void descompactar()
         return;
     }
 
-    no_arvore* atual = raiz;
-    int c = fgetc(arquivo_comprimido);
+    no_arvore* atual = raiz; // PARA ANDAR PELA ARVORE SEM PERDER A RAIZ
+    int c = fgetc(arquivo_comprimido); // PEGA O 1º BYTE DO ARQUIVO COMPRIMIDO
     if (c == EOF) {
         fclose(arquivo_comprimido);
         fclose(arquivo_descomprimido);
         return;
     }
     
-    unsigned char byte_atual = (unsigned char)c;
+    unsigned char byte_atual = (unsigned char)c; // PARA ANDAR PELOS BYTES DO ARQUIVO COMPRIMIDO SEM ESTRAGAR O PRÓPRIO
     
     while(1) {
-        c = fgetc(arquivo_comprimido);
+        c = fgetc(arquivo_comprimido); // VAI PEGANDO OS PROXIMOS BYTES DO ARQUIVO, DESCOMPRIME O BYTE DE ACORDO COM A ARVORE E COLOCA NO ARQUIVO DESCOMPRIMIDO
         
         if (c == EOF) {
-            int bits_limite = 8 - lixo;
-            for(int bit_pos = 0; bit_pos < bits_limite; bit_pos++) {
+            int bits_limite = 8 - lixo; // AQUI ACABOU OS BYTES PARA LER, OU SEJA, O BYTE QUE SOBROU PODE CONTER LIXO, ENTÃO ANDAREMOS NA ARVORE UMA ULTIMA VEZ PARA TER CERTEZA DE QUE O FIM ESTARÁ CERTO
+            for(int bit_pos = 0; bit_pos < bits_limite; bit_pos++) { // REPETE O MESMO PROCESSO DO LAÇO RECURSIVO DO ELSE DESSA CONDIÇÃO (c == EOF)
                 int bit = (byte_atual >> (7 - bit_pos)) & 1;
                 
                 if(bit == 0) atual = atual->left;
@@ -498,18 +498,18 @@ void descompactar()
         } else {
             unsigned char proximo_byte = (unsigned char)c;
             for(int bit_pos = 0; bit_pos < 8; bit_pos++) {
-                int bit = (byte_atual >> (7 - bit_pos)) & 1;
+                int bit = (byte_atual >> (7 - bit_pos)) & 1; // SÓ PARA SABER ONDE ANDAR NA ARVORE, DE ACORDO COM O BYTE QUE ESTÁ SENDO LIDO
                 
                 if(bit == 0) atual = atual->left;
-                else if(bit == 1) atual = atual->right;
+                else atual = atual->right;
 
-                if(atual->left == NULL && atual->right == NULL) {
+                if(atual->left == NULL && atual->right == NULL) { // QUANDO ACHA UMA FOLHA DA ARVORE, BOTA O BYTE "VERDADEIRO" E VOLTA O ATUAL PARA A RAIZ, PARA CONTINUAR O PROCESSO ATÉ NÃO EXISTIR MAIS BYTES PARA LER
                     HuffmanData* data = (HuffmanData*) atual->data;
                     fputc(data->byte, arquivo_descomprimido);
                     atual = raiz;
                 }
             }
-            byte_atual = proximo_byte;
+            byte_atual = proximo_byte; // FAZ NO FINAL, PARA NÃO GERAR ERRO SE O FGETC PEGASSE NULL E O BYTE_ATUAL TENTARIA PEGAR O NULL, MAS NÃO EXISTE CHAR NULL, PORTANTO IRIA GERAR ERRO DE EXECUÇÃO OU LOOP
         }
     }
 
@@ -528,6 +528,8 @@ no_arvore* compactar()
 
     printf("Digite o nome do arquivo para compactar (Exemplo: gatos.jpg , chave.txt, notas.pdf):\n");
     char_lidos = getline((char**) &nome_arquivo, &tamanho_buffer, stdin);
+
+    // REMOVE OS CARACTERES DE QUEBRA DE LINHA DO WINDOWS E DO LINUX, COMO \r E \n
     if (char_lidos > 0) 
     {
         nome_arquivo[strcspn((char*)nome_arquivo, "\r\n")] = '\0';
@@ -539,9 +541,9 @@ no_arvore* compactar()
     }
 
     char nome_saida[512];
-    snprintf(nome_saida, sizeof(nome_saida), "%s.huff", nome_arquivo);
+    snprintf(nome_saida, sizeof(nome_saida), "%s.huff", nome_arquivo); // SO BOTA O NOME CORRETO DE SAIDA PARA O .huff
 
-    int total_bytes = criar_frequencia_universal((const char*) nome_arquivo, mapa_frequencia);
+    int total_bytes = criar_frequencia_universal((const char*) nome_arquivo, mapa_frequencia); // CRIA A FREQUENCIA UNIVERSAL E VÊ QUANTOS CARACTERES/BYTES DIFERENTES EXISTEM NO ARQUIVO
 
     if(total_bytes == 0)
     {
@@ -555,10 +557,10 @@ no_arvore* compactar()
 
     no_arvore* raiz_huffman = criar_arvore(fila_de_frequencia);
 
-    int colunas = altura_arvore(raiz_huffman) + 1;
+    int colunas = altura_arvore(raiz_huffman) + 1; // JÁ CONTA COM A RAIZ, POR ISSO O +1
     char** dicionario = aloca_dicionario(colunas);
     gerar_dicionario(dicionario, raiz_huffman, "", colunas);
-    imprime_dicionario(dicionario);
+    // imprime_dicionario(dicionario); // FICA A CRITERIO DE COLOCAR OU NÃO, POIS PARA PODER VER O DICIONARIO BONITINHO, É NECESSARIO TIRAR A CHAMADA DO LIMPAR_ECRA NA MAIN, POIS ELA FAZ O CLEAR DO TERMINAL
 
     FILE* arquivo_entrada = fopen((char*) nome_arquivo, "rb");
     FILE* arquivo_saida = fopen(nome_saida, "wb");
@@ -573,7 +575,7 @@ no_arvore* compactar()
     fputc(0, arquivo_saida);
     fputc(0, arquivo_saida);
 
-    salvar_arvore(raiz_huffman, arquivo_saida);
+    salvar_arvore(raiz_huffman, arquivo_saida); // SALVA A ARVORE INTEIRA NO RESTANTE DO ARQUIVO
 
     unsigned char bit_buffer = 0;
     int bit_count = 0;
@@ -594,12 +596,12 @@ no_arvore* compactar()
 
     flush_bits(arquivo_saida, &bit_buffer, &bit_count);
 
-    fseek(arquivo_saida, 0 , SEEK_SET);
+    fseek(arquivo_saida, 0 , SEEK_SET); // ENCONTRA OS 2 BYTES INICIAIS
 
-    unsigned char byte1 = (lixo << 5) | (tamanho_arvore >> 8);
-    unsigned char byte2 = tamanho_arvore & 0xFF;
+    unsigned char byte1 = (lixo << 5) | (tamanho_arvore >> 8); // FAZ UMA MASCARA PARA O 1º BYTE, OU SEJA, ANTES O BYTE1 É 00000000, DEPOIS ELE COLOCARÁ OS 3 PRIMEIROS BITS COMO LIXO, E O RESTO (5 BITS) PARA CASO A ARVORE NECESSITE
+    unsigned char byte2 = tamanho_arvore & 0xFF; // SALVA O TAMANHO DA ARVORE NO BYTE2, UTILIZANDO O RESTO DOS BITS QUE TALVEZ SOBRARAM NO BYTE1 PARA PREENCHER O BYTE2, OU SEJA, O TAMANHO PODE TER 13 BITS
 
-    fputc(byte1, arquivo_saida);
+    fputc(byte1, arquivo_saida); // COLOCA AMBOS OS BYTES ALTERADOS NO ARQUIVO DE SAIDA, NAQUELA POSIÇÃO DO BYTE 1 E DEPOIS DO BYTE 2
     fputc(byte2, arquivo_saida);
 
     fclose(arquivo_entrada);
