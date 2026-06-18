@@ -1,4 +1,35 @@
-#include "huffman.h"
+#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+
+// ============================================================================
+// ESTRUTURAS DE DADOS
+// ============================================================================
+
+typedef struct HuffmanData {
+    unsigned char byte; // Usamos unsigned char para aceitar QUALQUER tipo de arquivo (0 a 255)
+    ssize_t frequency;     // Quantas vezes o byte aparece
+} HuffmanData;
+
+typedef struct node_arvore{
+    struct node_arvore* left; // filho da esquerda
+    struct node_arvore* right; // filho da direita
+    void* data; // Nesse caso, está servindo como HuffmanData, que armazena 1 byte e a frequencia do byte num arquivo/string
+} no_arvore;
+
+typedef struct node_lista{
+    struct node_lista* next; // Node da fila de frequencia que indica o proximo da fila de frequencia
+    void* item; // Nesse caso, está servindo para armazenar tanto node_arvore quanto as proprias frequencias da fila de frequencia
+} NODE;
+
+typedef struct lista{ // Apenas contém o head e o tail da lista, que são nodes da fila de frequencia
+    NODE* head;
+    NODE* tail;
+} LISTA;
 
 // ============================================================================
 // 1. FUNÇÕES AUXILIARES
@@ -11,6 +42,50 @@ void limpar_ecra()
     printf("\033[H\033[2J");
     fflush(stdout); // Garante que o comando é enviado imediatamente
 }
+
+#ifdef _WIN32
+ssize_t getline(char **lineptr, size_t *n, FILE *stream) // Implementação manual do getline para Windows
+{
+    size_t pos;
+    int c;
+
+    if (lineptr == NULL || stream == NULL || n == NULL) {
+        return -1;
+    }
+
+    if (*lineptr == NULL) {
+        *n = 128;
+        if ((*lineptr = malloc(*n)) == NULL) {
+            return -1;
+        }
+    }
+
+    pos = 0;
+    while ((c = fgetc(stream)) != EOF) {
+        if (pos + 1 >= *n) {
+            size_t new_size = *n + 128;
+            char *new_ptr = (char*) realloc(*lineptr, new_size);
+            if (new_ptr == NULL) {
+                return -1;
+            }
+            *lineptr = new_ptr;
+            *n = new_size;
+        }
+
+        ((unsigned char *)*lineptr)[pos++] = c;
+        if (c == '\n') {
+            break;
+        }
+    }
+
+    if (pos == 0) {
+        return -1;
+    }
+
+    (*lineptr)[pos] = '\0';
+    return pos;
+}
+#endif
 
 // ============================================================================
 // 2. FUNÇÕES DE CRIAR MAPA DE FREQUENCIA
@@ -262,7 +337,7 @@ char** aloca_dicionario(int colunas)
     return dicionario;
 }
 
-void gerar_dicionario(char** dicionario, no_arvore* raiz, unsigned char* string, int colunas)
+void gerar_dicionario(char** dicionario, no_arvore* raiz, const char* string, int colunas)
 {
     char esquerda[colunas], direita[colunas];
 
@@ -326,7 +401,7 @@ void flush_bits(FILE* arquivo_saida, unsigned char* bit_buffer, int* bit_count)
 }
 
 // ============================================================================
-// 6. FUNÇÕES DE CODIFICAR E DECODIFICAR
+// 6. FUNÇÃO DE CODIFICAR O DICIONÁRIO
 // ============================================================================
 
 char* codificar(char** dicionario, unsigned char* texto, ssize_t bytes_lidos, int colunas)
@@ -341,10 +416,14 @@ char* codificar(char** dicionario, unsigned char* texto, ssize_t bytes_lidos, in
     return codigo;
 }
 
-void decodificar()
+// ============================================================================
+// 7. FUNÇÕES DE COMPACTAR, DESCOMPACTAR E MAIN
+// ============================================================================
+
+void descompactar()
 {
     char nome_comprimido[256];
-    printf("Digite o nome do arquivo comprimido para descompactar (Ex: bin_comprimido.txt):\n");
+    printf("Digite o nome do arquivo comprimido para descompactar (Ex: bin_comprimido.txt.huff):\n");
     if (scanf("%255s", nome_comprimido) != 1) return;
 
     FILE* arquivo_comprimido = fopen(nome_comprimido, "rb");
@@ -437,5 +516,152 @@ void decodificar()
     fclose(arquivo_comprimido);
     fclose(arquivo_descomprimido);
 
-    printf("Arquivo decodificado e restaurado com sucesso em '%s'!\n", nome_saida);
+    printf("Arquivo descompactado e restaurado com sucesso em '%s'!\n", nome_saida);
+}
+
+no_arvore* compactar()
+{
+    ssize_t mapa_frequencia[256] = {0};
+    unsigned char* nome_arquivo = NULL;
+    size_t tamanho_buffer = 0;
+    ssize_t char_lidos;
+
+    printf("Digite o nome do arquivo para compactar (Exemplo: gatos.jpg , chave.txt, notas.pdf):\n");
+    char_lidos = getline((char**) &nome_arquivo, &tamanho_buffer, stdin);
+    if (char_lidos > 0) 
+    {
+        nome_arquivo[strcspn((char*)nome_arquivo, "\r\n")] = '\0';
+    } 
+    else 
+    {
+        printf("Erro ao ler a entrada do usuario.\n");
+        return NULL;
+    }
+
+    char nome_saida[512];
+    snprintf(nome_saida, sizeof(nome_saida), "%s.huff", nome_arquivo);
+
+    int total_bytes = criar_frequencia_universal((const char*) nome_arquivo, mapa_frequencia);
+
+    if(total_bytes == 0)
+    {
+        printf("Nao conseguiu ler.\n");
+        return NULL;
+    }
+
+    LISTA* fila_de_frequencia = create_list();
+
+    inserir_fila_ordenada(fila_de_frequencia, mapa_frequencia);
+
+    no_arvore* raiz_huffman = criar_arvore(fila_de_frequencia);
+
+    int colunas = altura_arvore(raiz_huffman) + 1;
+    char** dicionario = aloca_dicionario(colunas);
+    gerar_dicionario(dicionario, raiz_huffman, "", colunas);
+    imprime_dicionario(dicionario);
+
+    FILE* arquivo_entrada = fopen((char*) nome_arquivo, "rb");
+    FILE* arquivo_saida = fopen(nome_saida, "wb");
+
+    if(arquivo_entrada == NULL || arquivo_saida == NULL)
+    {
+        printf("Erro ao abrir os arquivos.\n");
+        free(nome_arquivo);
+        return NULL;
+    }
+
+    fputc(0, arquivo_saida);
+    fputc(0, arquivo_saida);
+
+    salvar_arvore(raiz_huffman, arquivo_saida);
+
+    unsigned char bit_buffer = 0;
+    int bit_count = 0;
+
+    unsigned char buffer_leitura[4096];
+    size_t bytes_lidos;
+
+    while((bytes_lidos = fread(buffer_leitura, 1, sizeof(buffer_leitura), arquivo_entrada)) > 0)
+    {
+        char* codificado = codificar(dicionario, buffer_leitura, bytes_lidos, colunas);
+
+        empacotar_e_escrever(codificado, arquivo_saida, &bit_buffer, &bit_count);
+        free(codificado);
+    }
+
+    int lixo = (bit_count == 0) ? 0 : (8 - bit_count);
+    int tamanho_arvore = calcular_tamanho_arvore(raiz_huffman);
+
+    flush_bits(arquivo_saida, &bit_buffer, &bit_count);
+
+    fseek(arquivo_saida, 0 , SEEK_SET);
+
+    unsigned char byte1 = (lixo << 5) | (tamanho_arvore >> 8);
+    unsigned char byte2 = tamanho_arvore & 0xFF;
+
+    fputc(byte1, arquivo_saida);
+    fputc(byte2, arquivo_saida);
+
+    fclose(arquivo_entrada);
+    fclose(arquivo_saida);
+
+    free(nome_arquivo);
+
+    limpar_ecra();
+
+    printf("Arquivo Binário compactado com sucesso em '%s'!.\n", nome_saida);
+
+    return raiz_huffman;
+}
+
+int main()
+{
+    printf("\tBem-Vindos a Central de Projetos 2º Periodo - Marcio Ribeiro!\n");
+    printf("\n\tEscolha uma das alternativas abaixo:\n");
+    printf("\t0 - Sair da Central de Projetos\n");
+    printf("\t1 - Compactar Arquivo\n");
+    printf("\t2 - Descompactar Arquivo\n");
+    printf("\tSua Opcao: ");
+
+    short n = -1;
+    while(n != 0)
+    {
+        if(scanf("%hd", &n) != 1)
+        {
+            printf("\t[Erro] Por favor, digite um numero valido.\n");
+            getchar();
+            continue;
+        }
+        
+        getchar();
+
+        switch (n)
+        {
+            case 1:
+                limpar_ecra();
+                compactar();
+                break;
+            case 2:
+                limpar_ecra();
+                descompactar();
+                break;
+            case 0:
+                limpar_ecra();
+                printf("\n\tSaindo da Central de Projetos. Ate mais!\n");
+                return 0;
+                break;
+            default:
+                printf("\n\t[Opcao Invalida] Tente novamente.\n\n");
+                break;
+        }
+
+    
+        printf("\n\tEscolha uma das alternativas abaixo:\n");
+        printf("\t0 - Sair da Central de Projetos\n");
+        printf("\t1 - Compactar Arquivo\n");
+        printf("\t2 - Descompactar Arquivo\n");
+        printf("\tSua Escolha: ");
+    }
+
+    return 0;
 }
